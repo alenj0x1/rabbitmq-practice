@@ -6,7 +6,15 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddMassTransit(x =>
 {
-    x.AddConsumer<OrderCreatedConsumer>()
+    x.AddConsumer<OrderCreatedConsumer>(c =>
+        {
+            // by consumer reply
+            c.UseMessageRetry(r => r.Intervals(
+                TimeSpan.FromSeconds(5),
+                TimeSpan.FromSeconds(15),
+                TimeSpan.FromSeconds(30)
+                ));
+        })
         .Endpoint(e => e.Name = "inventory-order-created");
 
     x.AddConsumer<CheckStockConsumer>()
@@ -21,6 +29,11 @@ builder.Services.AddMassTransit(x =>
         });
 
         cfg.ConfigureEndpoints(ctx);
+
+        // general retry
+        cfg.UseMessageRetry(r => r.Intervals(
+                TimeSpan.FromSeconds(5)
+        ));
     });
 });
 

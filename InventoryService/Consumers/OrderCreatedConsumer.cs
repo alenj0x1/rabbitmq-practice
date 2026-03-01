@@ -12,7 +12,12 @@ namespace InventoryService.Consumers
     {
         public async Task Consume(ConsumeContext<OrderCreated> context)
         {
-            var data = context;
+            // DLX created automatically, with prefix queue[_error]
+            if (context.Message.DebugException)
+            {
+                throw new Exception();
+            }
+
             Console.WriteLine(context.Message.Product);
         }
     }
