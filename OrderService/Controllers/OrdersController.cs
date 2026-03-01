@@ -13,20 +13,20 @@ namespace OrderService.Controllers
     public class OrdersController(RabbitMQConnection rabbitMQConnection) : ControllerBase
     {
         [HttpPost("create")]
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> Create([FromBody] OrderCreated order)
         {
             using var channel = await rabbitMQConnection.Connection.CreateChannelAsync();
 
-            var queue = await channel.QueueDeclareAsync("order.queue", durable: true, autoDelete: false, exclusive: false);
+            // note: Fanout, for multiple queues // multiple microservices
+            await channel.ExchangeDeclareAsync("orders.exchange", ExchangeType.Fanout);
 
-            var order = new OrderCreated
-            {
-                OrderId = Guid.NewGuid(),
-                Product = "computer",
-                Quantity = 1
-            };
+            order.OrderId = Guid.NewGuid();
             var body = JsonSerializer.SerializeToUtf8Bytes(order);
-            await channel.BasicPublishAsync("", "order.queue", false, new BasicProperties(), body);
+
+            // note: add here, in BasicProperties, Persistent property, "message save on disk".
+            // note: at here, routingKey value, is not necessary, because it's using a exchange and it's fanout, not direct
+            // interesting fact: when rabbitmq, not has memory, it's messages, are saved in the disk, and categorized as Paged out
+            await channel.BasicPublishAsync("orders.exchange", "", false, new BasicProperties(), body);
 
             return Ok("hello!");
         }

@@ -1,6 +1,9 @@
 using NotificationService;
+using NotificationService.Classes;
 
 var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddSingleton<RabbitMQConnection>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<RabbitMQConnection>());
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();
