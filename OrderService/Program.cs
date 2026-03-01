@@ -1,5 +1,6 @@
-using OrderService.Classes;
+using MassTransit;
 using Scalar.AspNetCore;
+using Shared.Contract;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,8 +10,20 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddSingleton<RabbitMQConnection>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<RabbitMQConnection>());
+builder.Services.AddMassTransit(x =>
+{
+    // This is not necessary, mass transit add this automatically, when this called from an constructor
+    x.AddRequestClient<CheckStock>();
+
+    x.UsingRabbitMq((ctx, cfg) =>
+    {
+        cfg.Host("localhost", "/", h =>
+        {
+            h.Username("guest");
+            h.Password("guest");
+        });
+    });
+});
 
 var app = builder.Build();
 

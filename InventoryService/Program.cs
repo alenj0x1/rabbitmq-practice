@@ -1,10 +1,29 @@
 using InventoryService;
-using InventoryService.Classes;
+using InventoryService.Consumers;
+using MassTransit;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddSingleton<RabbitMQConnection>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<RabbitMQConnection>());
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<OrderCreatedConsumer>()
+        .Endpoint(e => e.Name = "inventory-order-created");
+
+    x.AddConsumer<CheckStockConsumer>()
+        .Endpoint(e => e.Name = "check-stock");
+
+    x.UsingRabbitMq((ctx, cfg) =>
+    {
+        cfg.Host("localhost", "/", h =>
+        {
+            h.Username("guest");
+            h.Password("guest");
+        });
+
+        cfg.ConfigureEndpoints(ctx);
+    });
+});
+
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();
