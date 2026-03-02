@@ -1,0 +1,504 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* ── BASE (dark mode) ─────────────────────────────────── */
+        * { font-family: 'Syne', sans-serif; }
+        code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+        body {
+            background-color: #0a0a0a;
+            background-image: 
+                radial-gradient(ellipse at 20% 50%, rgba(255, 80, 0, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(255, 200, 0, 0.04) 0%, transparent 40%);
+            min-height: 100vh;
+            transition: background 0.5s ease;
+        }
+        .card {
+            background: #111;
+            border: 1px solid #222;
+            transition: background 0.4s, border-color 0.4s;
+        }
+        .input-field {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            color: #e0e0e0;
+            transition: border-color 0.2s, background 0.4s, color 0.4s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #ff5000;
+            box-shadow: 0 0 0 3px rgba(255, 80, 0, 0.1);
+        }
+        .input-field::placeholder { color: #444; }
+        .btn-generate {
+            background: #ff5000;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-generate:hover { background: #e04500; transform: translateY(-1px); }
+        .btn-generate:active { transform: translateY(0); }
+        .btn-generate:disabled { background: #333; color: #555; cursor: not-allowed; transform: none; }
+        .process-card {
+            background: #111;
+            border: 1px solid #1e1e1e;
+            animation: slideIn 0.3s ease;
+            transition: background 0.4s, border-color 0.4s;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .progress-bar-track {
+            background: #1a1a1a;
+            border-radius: 2px;
+            overflow: hidden;
+            transition: background 0.4s;
+        }
+        .progress-bar-fill {
+            height: 4px;
+            background: linear-gradient(90deg, #ff5000, #ffaa00);
+            border-radius: 2px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s;
+            position: relative;
+        }
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            right: 0; top: 0;
+            width: 20px; height: 100%;
+            background: rgba(255,255,255,0.4);
+            filter: blur(4px);
+        }
+        .status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #ff5000;
+            transition: background 0.4s;
+        }
+        .status-dot.active { animation: pulse 1.5s infinite; }
+        .status-dot.completed { background: #22c55e; animation: none; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+        .tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            color: #666;
+            padding: 2px 6px;
+            border-radius: 2px;
+            transition: background 0.4s, border-color 0.4s, color 0.4s;
+        }
+        label { color: #888; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; transition: color 0.4s; }
+        .section-title { color: #333; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 600; transition: color 0.4s; }
+        .empty-state { color: #2a2a2a; transition: color 0.4s; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+        /* ── TOGGLE BUTTON ───────────────────────────────────── */
+        #themeToggle {
+            position: fixed;
+            top: 20px; right: 24px;
+            z-index: 100;
+            cursor: pointer;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 999px;
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #aaa;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+        #themeToggle:hover { border-color: #ff5000; color: #fff; }
+        #themeToggle .toggle-icon { font-size: 16px; transition: transform 0.5s; }
+
+        /* ── UWU THEME ───────────────────────────────────────── */
+        body.uwu * { font-family: 'Nunito', sans-serif !important; }
+        body.uwu {
+            background-color: #fff0f6 !important;
+            background-image:
+                radial-gradient(ellipse at 10% 20%, rgba(255,182,255,0.35) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 80%, rgba(180,210,255,0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(255,230,150,0.2) 0%, transparent 60%) !important;
+        }
+        body.uwu #themeToggle {
+            background: #ffe0f7;
+            border-color: #f9a8d4;
+            color: #be185d;
+        }
+        body.uwu #themeToggle:hover { background: #ffd6f0; border-color: #ec4899; }
+
+        body.uwu .card {
+            background: rgba(255,255,255,0.85) !important;
+            border-color: #fbb6ce !important;
+            box-shadow: 0 4px 24px rgba(236,72,153,0.08);
+            backdrop-filter: blur(8px);
+        }
+        body.uwu .input-field {
+            background: #fff5fb !important;
+            border-color: #fbcfe8 !important;
+            color: #831843 !important;
+        }
+        body.uwu .input-field:focus {
+            border-color: #ec4899 !important;
+            box-shadow: 0 0 0 3px rgba(236,72,153,0.15) !important;
+        }
+        body.uwu .input-field::placeholder { color: #f9a8d4 !important; }
+        body.uwu label { color: #db2777 !important; letter-spacing: 0.04em; text-transform: none; }
+
+        body.uwu .btn-generate {
+            background: linear-gradient(135deg, #f472b6, #a78bfa) !important;
+            border-radius: 999px !important;
+            letter-spacing: 0.02em;
+        }
+        body.uwu .btn-generate:hover { background: linear-gradient(135deg, #ec4899, #8b5cf6) !important; transform: translateY(-2px) scale(1.01); }
+        body.uwu .btn-generate:disabled { background: #fce7f3 !important; color: #f9a8d4 !important; }
+
+        body.uwu .process-card {
+            background: rgba(255,255,255,0.9) !important;
+            border-color: #fbb6ce !important;
+            border-radius: 16px !important;
+            box-shadow: 0 2px 12px rgba(236,72,153,0.07);
+        }
+        body.uwu .progress-bar-track { background: #fce7f3 !important; border-radius: 999px !important; }
+        body.uwu .progress-bar-fill {
+            height: 8px !important;
+            background: linear-gradient(90deg, #f472b6, #a78bfa, #60a5fa) !important;
+            border-radius: 999px !important;
+        }
+        body.uwu .status-dot { background: #f472b6 !important; }
+        body.uwu .status-dot.completed { background: #34d399 !important; }
+
+        body.uwu .tag {
+            background: #fdf2f8 !important;
+            border-color: #fbcfe8 !important;
+            color: #db2777 !important;
+            border-radius: 999px !important;
+        }
+        body.uwu .section-title { color: #f9a8d4 !important; letter-spacing: 0.05em; }
+        body.uwu .empty-state { color: #fbb6ce !important; }
+        body.uwu h1 { color: #be185d !important; }
+        body.uwu .text-white { color: #831843 !important; }
+        body.uwu .text-gray-500 { color: #f472b6 !important; }
+        body.uwu .text-gray-600 { color: #db2777 !important; }
+        body.uwu .text-orange-500 { color: #a855f7 !important; }
+
+        /* Floating kawaii decorations */
+        body.uwu #kawaii-deco { display: flex !important; }
+        #kawaii-deco {
+            display: none;
+            position: fixed;
+            pointer-events: none;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .kawaii-float {
+            position: absolute;
+            font-size: 22px;
+            animation: floatUp 6s ease-in-out infinite;
+            opacity: 0.25;
+        }
+        @keyframes floatUp {
+            0%   { transform: translateY(0px) rotate(0deg); opacity: 0.2; }
+            50%  { transform: translateY(-18px) rotate(8deg); opacity: 0.35; }
+            100% { transform: translateY(0px) rotate(0deg); opacity: 0.2; }
+        }
+
+        body.uwu ::-webkit-scrollbar-track { background: #fdf2f8; }
+        body.uwu ::-webkit-scrollbar-thumb { background: #fbcfe8; }
+
+        /* sparkle on pct label when uwu */
+        body.uwu .pct-label::before { content: '✨ '; }
+        body.uwu .pct-label::after  { content: ' ✨'; }
+    </style>
+</head>
+<body class="p-8">
+
+    <!-- Kawaii floating decorations (only visible in uwu mode) -->
+    <div id="kawaii-deco">
+        <span class="kawaii-float" style="left:5%;  top:10%; animation-delay:0s">🌸</span>
+        <span class="kawaii-float" style="left:15%; top:70%; animation-delay:1s">⭐</span>
+        <span class="kawaii-float" style="left:80%; top:15%; animation-delay:2s">🌷</span>
+        <span class="kawaii-float" style="left:90%; top:65%; animation-delay:0.5s">✨</span>
+        <span class="kawaii-float" style="left:50%; top:85%; animation-delay:1.5s">🎀</span>
+        <span class="kawaii-float" style="left:35%; top:5%;  animation-delay:3s">🌙</span>
+        <span class="kawaii-float" style="left:70%; top:40%; animation-delay:2.5s">💫</span>
+    </div>
+
+    <!-- Theme toggle -->
+    <button id="themeToggle" onclick="toggleTheme()">
+        <span class="toggle-icon">🌙</span>
+        <span id="toggleLabel">modo uwu</span>
+    </button>
+
+    <div class="max-w-2xl mx-auto" style="position:relative; z-index:1">
+
+        <!-- Header -->
+        <div class="mb-10">
+            <p class="section-title mb-2" id="subtitle">Sistema de reportes</p>
+            <h1 class="text-3xl font-extrabold text-white tracking-tight" id="mainTitle">Report Generator</h1>
+        </div>
+
+        <!-- Form -->
+        <div class="card rounded-lg p-6 mb-6">
+            <form onsubmit="generateReport(event)">
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="col-span-2">
+                        <label class="block mb-2">Contenido</label>
+                        <input
+                            type="text"
+                            name="content"
+                            placeholder="Describe el reporte..."
+                            class="input-field w-full px-4 py-3 rounded-md text-sm"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label class="block mb-2">User ID</label>
+                        <input
+                            type="number"
+                            name="userId"
+                            placeholder="1"
+                            class="input-field w-full px-4 py-3 rounded-md text-sm"
+                            required
+                        />
+                    </div>
+                </div>
+                <button type="submit" id="submitBtn" class="btn-generate w-full py-3 rounded-md text-sm">
+                    Generar reporte
+                </button>
+            </form>
+        </div>
+
+        <!-- Processes -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <p class="section-title">Procesos activos</p>
+                <span id="processCount" class="tag">0 procesos</span>
+            </div>
+
+            <div id="processesContainer">
+                <!-- Empty state -->
+                <div id="emptyState" class="empty-state text-center py-16">
+                    <p class="text-4xl mb-3">⬜</p>
+                    <p class="text-sm">Ningún proceso en curso</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ── Theme toggle ─────────────────────────────────────────
+        let isUwu = false;
+        const themes = {
+            normal: {
+                icon: '🌙', label: 'modo uwu',
+                subtitle: 'Sistema de reportes',
+                title: 'Report Generator',
+                placeholder: 'Describe el reporte...',
+                btnText: 'Generar reporte',
+                emptyIcon: '⬜', emptyText: 'Ningún proceso en curso',
+                sectionTitle: 'Procesos activos',
+            },
+            uwu: {
+                icon: '🖤', label: 'modo dark',
+                subtitle: 'Sistema de wepowtes owo',
+                title: '✨ Repowt Genewatow ✨',
+                placeholder: 'Descwibe el wepowte... uwu',
+                btnText: '🌸 Genewaw wepowte nyaa~',
+                emptyIcon: '🌸', emptyText: 'Ningún pwoceso en cuwso uwu',
+                sectionTitle: '✨ Pwocesos activos uwu',
+            }
+        };
+        function toggleTheme() {
+            isUwu = !isUwu;
+            const t = isUwu ? themes.uwu : themes.normal;
+            document.body.classList.toggle('uwu', isUwu);
+            document.querySelector('#themeToggle .toggle-icon').textContent = t.icon;
+            document.getElementById('toggleLabel').textContent = t.label;
+            document.getElementById('subtitle').textContent = t.subtitle;
+            document.getElementById('mainTitle').textContent = t.title;
+            document.querySelector('input[name="content"]').placeholder = t.placeholder;
+            const btn = document.getElementById('submitBtn');
+            if (!btn.disabled) btn.textContent = t.btnText;
+            const emptyState = document.getElementById('emptyState');
+            if (emptyState) {
+                emptyState.querySelector('p:first-child').textContent = t.emptyIcon;
+                emptyState.querySelector('p:last-child').textContent = t.emptyText;
+            }
+            document.querySelector('.section-title').textContent = t.sectionTitle;
+        }
+
+        const API_BASE = "http://localhost:5077";
+        const HUB_URL  = `${API_BASE}/hubs/reports`;
+
+        // ── Estado ──────────────────────────────────────────────
+        const processes = {}; // processId → { userId, percentage, message, filePath }
+        let connection = null;
+        let currentUserId = null;
+
+        // ── SignalR ──────────────────────────────────────────────
+        async function initSignalR(userId) {
+            // Si ya hay una conexión para este usuario, no reconectamos
+            if (connection && currentUserId === userId) return;
+
+            // Si había una conexión previa con otro usuario, la cerramos
+            if (connection) await connection.stop();
+
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(HUB_URL)
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("ProgressChanged", (data) => {
+                console.log("📦 Progreso recibido:", data);
+                updateProcess(data);
+            });
+
+            await connection.start();
+            console.log("✅ SignalR conectado");
+
+            await connection.invoke("JoinGroup", userId);
+            console.log(`👥 Unido al grupo usuario ${userId}`);
+
+            currentUserId = userId;
+        }
+
+        // ── Generar reporte ──────────────────────────────────────
+        /**
+         * @param {SubmitEvent} event
+         */
+        async function generateReport(event) {
+            event.preventDefault();
+
+            const form    = event.target;
+            const content = form.content.value.trim();
+            const userId  = parseInt(form.userId.value);
+
+            if (!content || !userId) return;
+
+            const btn = document.getElementById("submitBtn");
+            btn.disabled = true;
+            btn.textContent = "Enviando...";
+
+            try {
+                await initSignalR(userId);
+
+                const res = await fetch(`${API_BASE}/api/reports?content=${encodeURIComponent(content)}&userId=${userId}`, {
+                    method: "POST"
+                });
+
+                if (!res.ok) throw new Error("Error al generar reporte");
+
+                const data = await res.json();
+                addProcess(data.processId, userId);
+
+                form.content.value = "";
+            } catch (err) {
+                console.error("❌ Error:", err);
+                alert("No se pudo conectar con el servidor.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Generar reporte";
+            }
+        }
+
+        // ── Proceso: agregar ────────────────────────────────────
+        function addProcess(processId, userId) {
+            processes[processId] = { userId, percentage: 0, message: "Iniciando...", filePath: null };
+            renderProcess(processId);
+            updateCount();
+            document.getElementById("emptyState")?.remove();
+        }
+
+        // ── Proceso: actualizar desde SignalR ───────────────────
+        function updateProcess(data) {
+            const { processId, percentage, percentageMessage, filePath } = data;
+
+            if (!processes[processId]) {
+                // Llegó un evento de un proceso que no está en el DOM aún
+                addProcess(processId, data.userId);
+            }
+
+            processes[processId].percentage = percentage;
+            processes[processId].message    = percentageMessage;
+            processes[processId].filePath   = filePath;
+
+            const card = document.getElementById(`process-${processId}`);
+            if (!card) return;
+
+            const bar      = card.querySelector(".progress-bar-fill");
+            const pct      = card.querySelector(".pct-label");
+            const msg      = card.querySelector(".msg-label");
+            const dot      = card.querySelector(".status-dot");
+            const fileRow  = card.querySelector(".file-row");
+
+            bar.style.width   = `${percentage}%`;
+            pct.textContent   = `${percentage}%`;
+            msg.textContent   = percentageMessage ?? "—";
+
+            const isCompleted = percentage >= 100;
+            dot.className = `status-dot ${isCompleted ? "completed" : "active"}`;
+
+            if (filePath && fileRow) {
+                fileRow.innerHTML = `<span class="tag">📄 ${filePath}</span>`;
+            }
+        }
+
+        // ── Proceso: renderizar tarjeta ─────────────────────────
+        function renderProcess(processId) {
+            const container = document.getElementById("processesContainer");
+            const shortId   = processId.substring(0, 8);
+
+            const card = document.createElement("div");
+            card.id        = `process-${processId}`;
+            card.className = "process-card rounded-lg p-5 mb-3";
+            card.innerHTML = `
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="status-dot active"></div>
+                        <span class="mono text-xs text-gray-500">${shortId}...</span>
+                    </div>
+                    <span class="pct-label mono text-xs text-orange-500 font-bold">0%</span>
+                </div>
+                <div class="progress-bar-track mb-3">
+                    <div class="progress-bar-fill" style="width: 0%"></div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="msg-label text-xs text-gray-600">Iniciando...</span>
+                    <div class="file-row"></div>
+                </div>
+            `;
+
+            container.prepend(card);
+        }
+
+        // ── Contador ────────────────────────────────────────────
+        function updateCount() {
+            const count = Object.keys(processes).length;
+            document.getElementById("processCount").textContent =
+                `${count} proceso${count !== 1 ? "s" : ""}`;
+        }
+    </script>
+</body>
+</html>

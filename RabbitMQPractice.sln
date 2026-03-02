@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36811.4 d17.14
+VisualStudioVersion = 17.14.36811.4
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderService", "OrderService\OrderService.csproj", "{B6B19C74-BDE5-4326-8DB1-533985F9756B}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotificationService", "NotificationService\NotificationService.csproj", "{7D7DC0DA-C63B-4085-B1F8-2F42579F9409}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{EB0A4AEC-E714-4FAE-B30F-9C4F6BB5268C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReportService", "ReportService\ReportService.csproj", "{DE58C5EF-159E-4EB6-9E04-D6FDCDF4A7D3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{EB0A4AEC-E714-4FAE-B30F-9C4F6BB5268C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EB0A4AEC-E714-4FAE-B30F-9C4F6BB5268C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EB0A4AEC-E714-4FAE-B30F-9C4F6BB5268C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE58C5EF-159E-4EB6-9E04-D6FDCDF4A7D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE58C5EF-159E-4EB6-9E04-D6FDCDF4A7D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE58C5EF-159E-4EB6-9E04-D6FDCDF4A7D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE58C5EF-159E-4EB6-9E04-D6FDCDF4A7D3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
